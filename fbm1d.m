@@ -38,9 +38,9 @@ lambda=real(fft(r))/(2*n); % eigenvalues
 W=fft(sqrt(lambda).*complex(randn(2*n,1),randn(2*n,1)));
 W = n^(-H)*cumsum(real(W(1:n+1))); % rescale
 W=T^H*W; t=(0:n)/n; t=t*T; % scale for final time T
-% if nargout==0
-%     plot(t,W); title('Fractional Brownian motion');
-%     xlabel('time $t$','interpreter','latex')
-%     ylabel('$W_t$','interpreter','latex')
+if nargout==0
+    plot(t,W); title('Fractional Brownian motion');
+    xlabel('time $t$','interpreter','latex')
+    ylabel('$W_t$','interpreter','latex')
 
 end
