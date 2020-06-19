@@ -20,9 +20,10 @@ class portfolio:
         self.sharpe = np.asarray([])
         self.initAlloc = np.asarray([])
         self.sharpeNonOpt = np.asarray([])
-        #self.stockChars = pd.DataFrame()
+        self.stockChars = pd.DataFrame()
+        self.threshold = 0
     
-    def optimize(self, t = 992,first=False, window=config.window):#, stockPool=stockPool):
+    def optimize(self, t = 992,first=False, window=config.window, ):#, stockPool=stockPool):
         """
         initialize weights based on datapoints before the 5 day week
         """
@@ -62,11 +63,11 @@ class portfolio:
     
     def characterize(self, tf, window=config.window):# stockPool=stockPool):
         """
+        ***moved to utils
         returns info of the stocks leading up to the optimization,
         such as variance of each stock and the gap between highest and lowest
 
         not efficient, better to just have a global stockChars df where I lookup stocks corresponding to each portfolio
-        ***moved to utils
         """
         ti = tf-window        
         
@@ -79,13 +80,15 @@ class portfolio:
             self.stockChars = pd.concat([self.stockChars,char])
         
 
-    def order(self, time):#, stockPool = stockPool):
+    def order(self, time, threshold=False):#, stockPool = stockPool):
         """
         calls optimize to find opt alloc
         returns the orders to be added to the broker dataframe
         immediately adjusts weights for sold stocks
         """
         opt = self.optimize(t=time)
+        if threshold: ###
+
         optweights = []
         for i,j in enumerate(self.stocks):
             optweights.append(round(opt[i]*self.volume/stockPool[j][time]))
