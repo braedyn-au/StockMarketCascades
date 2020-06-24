@@ -30,7 +30,7 @@ def characterize(tmin = 992, tmax = 8192, window=config.window):# stockPool=stoc
     returns info of the stocks leading up to the optimization,
     such as variance of each stock and the gap between highest and lowest
 
-    not efficient, better to just have a global stockChars df where I lookup stocks corresponding to each portfolio
+    not efficient, better to just have a global stockChars df where I lookup stocks in the stockPool corresponding to each portfolio
     ***moved to utils
     """
     stockChars = pd.DataFrame()        
@@ -45,3 +45,8 @@ def characterize(tmin = 992, tmax = 8192, window=config.window):# stockPool=stoc
             char = pd.DataFrame({'time':[tf],'stock':stock,'mean':mean,'var':var,'std':std})
             stockChars = pd.concat([stockChars,char])
     return stockChars
+
+def sigmoid(x, x0, k = 1):
+    z = np.exp(-k*(x-x0))
+    p = 1/(1+z)
+    return p

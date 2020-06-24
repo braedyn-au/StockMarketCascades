@@ -3,10 +3,11 @@ from scipy.optimize import minimize
 import pandas as pd
 import random 
 import string
-from library.utils import sharpe
+from library.utils import sharpe, characterize, sigmoid
 from library import config
 
 stockPool = config.stockPool
+tinit = 992
 
 class portfolio:
     
@@ -22,8 +23,9 @@ class portfolio:
         self.sharpeNonOpt = np.asarray([])
         self.stockChars = pd.DataFrame()
         self.threshold = 0
+        self.maxSharpe = 0
     
-    def optimize(self, t = 992,first=False, window=config.window, ):#, stockPool=stockPool):
+    def optimize(self, t = tinit,first=False, window=config.window ):#, stockPool=stockPool):
         """
         initialize weights based on datapoints before the 5 day week
         """
@@ -51,7 +53,7 @@ class portfolio:
             self.initAlloc = opt
             self.sharpeNonOpt = np.append(self.sharpeNonOpt,-sharpe(self.initAlloc,self.stocks,self.volume,ti,t))
             for i,j in enumerate(self.stocks):
-                self.weights[j] = round(opt[i]*self.volume/stockPool[j][992])
+                self.weights[j] = round(opt[i]*self.volume/stockPool[j][tinit])
                 self.alloc[j] = opt[i]
             print(-sharpe(list(self.alloc.values()),self.stocks,self.volume,ti,t))
         else:
@@ -61,33 +63,49 @@ class portfolio:
                 self.alloc[j] = opt[i]
             return opt
     
-    def characterize(self, tf, window=config.window):# stockPool=stockPool):
-        """
-        ***moved to utils
-        returns info of the stocks leading up to the optimization,
-        such as variance of each stock and the gap between highest and lowest
+    # def characterize(self, tf, window=config.window):# stockPool=stockPool):
+    #     """
+    #     ***moved to utils
+    #     returns info of the stocks leading up to the optimization,
+    #     such as variance of each stock and the gap between highest and lowest
 
-        not efficient, better to just have a global stockChars df where I lookup stocks corresponding to each portfolio
-        """
-        ti = tf-window        
+    #     not efficient, better to just have a global stockChars df where I lookup stocks corresponding to each portfolio
+    #     """
+    #     ti = tf-window        
         
-        for stock in self.stocks:
-            stepReturn = 100*np.diff(stockPool[stock][ti:tf])/stockPool[stock][ti:tf-1]
-            var = np.var(stepReturn)
-            std = np.sqrt(var)
-            mean = np.mean(stepReturn)
-            char = pd.DataFrame({'time':[tf], "portfolio":self.portfID,'stock':stock,'mean':mean,'var':var,'std':std})
-            self.stockChars = pd.concat([self.stockChars,char])
+    #     for stock in self.stocks:
+    #         stepReturn = 100*np.diff(stockPool[stock][ti:tf])/stockPool[stock][ti:tf-1]
+    #         var = np.var(stepReturn)
+    #         std = np.sqrt(var)
+    #         mean = np.mean(stepReturn)
+    #         char = pd.DataFrame({'time':[tf], "portfolio":self.portfID,'stock':stock,'mean':mean,'var':var,'std':std})
+    #         self.stockChars = pd.concat([self.stockChars,char])
         
+    def thresholdOrder(self, time, window=config.window):
+        ti = time-window
+        opt = self.optimize(t=time)
+        new = -sharpe(opt,self.stocks,self.volume,ti,time)
+        
+        pthresh = sigmoid(new,self.threshold)
+        puni = np.random.rand()
+        print("rebalance prob: ", pthresh)
+        print("roll: ", puni)
+        if puni < pthresh:
+            print('order sent')
+            orderList = self.order(time,opt=opt)
+        else:
+            blank = np.zeros(len(opt))
+            orderList = pd.DataFrame({'time':time, "portfolio":self.portfID,"stock":self.stocks, "order": blank})
+        return orderList
 
-    def order(self, time, threshold=False):#, stockPool = stockPool):
+    def order(self, time, opt=None):#, stockPool = stockPool):
         """
         calls optimize to find opt alloc
         returns the orders to be added to the broker dataframe
         immediately adjusts weights for sold stocks
         """
-        opt = self.optimize(t=time)
-        if threshold: ###
+        if opt is None:
+            opt = self.optimize(t=time)
 
         optweights = []
         for i,j in enumerate(self.stocks):
@@ -112,6 +130,29 @@ class portfolio:
         #print(self.weights)
         self.weights[stock] = self.weights[stock] + volume
         #print(self.weights)
+
+    def reset(self, t = tinit, ptile=80):
+        """
+        only to be used once after dry run
+        reset alloc and time, find the sharpe ratio threshold for sigmoid
+        """
+        size = len(self.stocks)
+        self.alloc = dict.fromkeys(self.stocks,1/size) #init with a sharpe function,
+        self.initAlloc = np.asarray([])
+        self.weights = dict.fromkeys(self.stocks,1) # put in dictionary for easy change
+        self.orders = np.zeros(size)
+
+        percentile = np.percentile(self.sharpe,ptile)
+        p100 = np.max(self.sharpe)
+        self.threshold = (p100+percentile)/2
+
+        self.sharpe = np.asarray([])
+        self.sharpeNonOpt = np.asarray([])
+        self.optimize(first=True)
+        print('reset!')
+        print(self.threshold)
+        print("_____")
+
         
 def portfGen(n=5):
     """

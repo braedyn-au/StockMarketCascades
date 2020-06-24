@@ -12,13 +12,25 @@ def brokerage(traderIDs, time, broker,totalOrders):
     can be used to look at the total submitted orders...
     """
     for key,portf in traderIDs.items():
-        #portf.characterize(time) moved to utils
+        #portf.characterize(time) moved to utils and perform on whole stockPool
         orderList = portf.order(time=time)
         broker = pd.concat([broker,orderList])
         totalOrders = pd.concat([totalOrders,orderList[orderList.order!=0]])
     #print(broker[broker.order!=0])
 
     return broker[broker.order!=0], totalOrders #remove all null orders
+
+def thresholdBrokerage(traderIDs,time,broker,totalOrders):
+    """
+    resets the portfolios and runs thresholdOrder
+    """
+    for key,portf in traderIDs.items():
+        orderList = portf.thresholdOrder(time=time)
+        broker = pd.concat([broker,orderList])
+        totalOrders = pd.concat([totalOrders,orderList[orderList.order!=0]])
+    
+    return broker[broker.order!=0], totalOrders
+
 
 def match(traderIDs, broker, transactions):
     """
@@ -147,3 +159,5 @@ def instantMatch(traderIDs, broker, transactions):
 
     
     return broker, transactions
+
+
