@@ -11,9 +11,10 @@ tinit = 992
 
 class portfolio:
     
-    def __init__(self,name,size,volume):
+    def __init__(self,name,size,volume, stocks):
         self.volume = volume
-        self.stocks = np.random.choice(np.arange(20), size=size, replace=False) # REPLACE
+        #self.stocks = np.random.choice(np.arange(20), size=size, replace=False) # REPLACE
+        self.stocks = stocks
         self.alloc = dict.fromkeys(self.stocks,1/size) #init with a sharpe function,
         self.weights = dict.fromkeys(self.stocks,1) # put in dictionary for easy change
         self.orders = np.zeros(size)
@@ -154,26 +155,55 @@ class portfolio:
         print("_____")
 
         
-def portfGen(n=5):
+def portfGen(stockPool=stockPool, n=5, sizeMin=5, sizeMax=7, overlapMin = 3, overlapMax=5):
     """
-    update to include overlap function
+    updated to include overlap function june 25
     """
-
+    stocks = np.arange(np.shape(stockPool)[0]) #check if 0 or 1
+    print(stocks)
     traderIDs = {}
     
     def randString(length = 5):
         letters = string.ascii_lowercase
         return ''.join(random.sample(letters,length))
     
-    for i in range(n):
+    # for i in range(n):
+    #     name = randString()
+    #     print(name)
+    #     while name in traderIDs:
+    #         name = randString()
+    #     vol = 10**np.random.randint(3,6)
+    #     traderIDs[name] = portfolio(name,np.random.randint(8,12),vol)
+    #     traderIDs[name].optimize(first=True)
+    indx = 0
+    for portfs in range(n):
+        
+        window = np.random.randint(sizeMin,sizeMax)
+        overlap = np.random.randint(overlapMin,overlapMax)
+        vol = 10**(np.random.randint(4,6))
+
+        startpos = indx % len(stocks)
+        window = np.random.randint(12,18)
         name = randString()
         print(name)
         while name in traderIDs:
             name = randString()
-        vol = 10**np.random.randint(3,6)
-        traderIDs[name] = portfolio(name,np.random.randint(8,12),vol)
+    #     print(startpos)
+    #     print(stocks)
+    #     print(startpos, ":", startpos+window)
+        if startpos+window >= len(stocks):
+            print('overflow ', startpos+window)
+            stocks2 = np.concatenate([stocks,stocks])
+            tstocks = np.copy(stocks2[startpos:startpos+window])
+            np.random.shuffle(stocks)
+            print("shuffled")
+        else:
+            tstocks = np.copy(stocks[startpos:startpos+window])
+        traderIDs[name] = portfolio(name, window, vol, tstocks)
         traderIDs[name].optimize(first=True)
-        
+        indx += window - overlap
+
+    
     return traderIDs
     
 def uniquePortfGen(n=5, availStocks = np.shape(stockPool)[0]):

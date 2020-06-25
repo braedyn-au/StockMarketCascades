@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd 
 from library import config
+import matplab.engine
 
+eng = matlab.engine.start_matlab()
 stockPool = config.stockPool
 
 def sharpe(alloc, stocks, vol, ti, tf):
@@ -50,3 +52,31 @@ def sigmoid(x, x0, k = 1):
     z = np.exp(-k*(x-x0))
     p = 1/(1+z)
     return p
+
+def fbm(H,n=(2**13),T=(1)):
+    """
+    H - hurst index in float format
+    n - number of timesteps as multiple of 2 in float format
+    T - total time can keep 1?? float
+    
+    calls the matlab function from wikipedia
+    ensure import matlab.engine
+    Zdravko Botev (2020). Fractional Brownian motion generator 
+    (https://www.mathworks.com/matlabcentral/fileexchange/38935-fractional-brownian-motion-generator)
+    Kroese, D. P., & Botev, Z. I. (2015). Spatial Process Simulation.
+    In Stochastic Geometry, Spatial Statistics and Random Fields(pp. 369-404)
+    Springer International Publishing, DOI: 10.1007/978-3-319-10064-7_12
+    """
+    T = float(T)
+    n = float(n)
+    H = float(H)
+    
+    #eng = matlab.engine.start_matlab()
+    a = eng.fbm1d(H,n,T)
+    fbm = np.asarray([])
+    for i in range(len(a)):
+        fbm = np.concatenate((fbm,np.asarray(a[i])))
+
+    #plt.plot(np.linspace(0,1,int(n+1)),fbm)
+    
+    return fbm
