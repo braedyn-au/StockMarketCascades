@@ -130,7 +130,7 @@ def instantMatch(traderIDs, broker, transactions):
         trader = traderIDs[broker.iloc[sID].portfolio]
 
         if Vol > 0:
-            trader.buy(stock,Vol)
+            trader.buy(stock=stock,time=ToS,volume=Vol)
             sale = pd.DataFrame({"ToS":[ToS], "stock":stock, "seller": 'world', 
                              "buyer": trader.portfID, "volume": Vol, 
                              "tradeID": str(ToS)+'|'+str(stock)+str('world')

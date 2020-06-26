@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd 
 from library import config
-import matplab.engine
+# import matlab.engine
 
-eng = matlab.engine.start_matlab()
-stockPool = config.stockPool
+# eng = matlab.engine.start_matlab()
+#stockPool = config.stockPool
 
-def sharpe(alloc, stocks, vol, ti, tf):
+def sharpe( alloc, stockPool, stocks, vol, ti, tf):
     """
     remake of sharpe calculation following 
     https://www.mlq.ai/python-for-finance-portfolio-optimization/#h1sjvcte25p1r8or1e1ngd82h2r8ha1
@@ -27,7 +27,7 @@ def sharpe(alloc, stocks, vol, ti, tf):
         print("dividebyzero")
     return -(Rp-Rf)/stdp
 
-def characterize(tmin = 992, tmax = 8192, window=config.window):# stockPool=stockPool):
+def characterize(stockPool, tmin = 992, tmax = 8192, window=config.window):# stockPool=stockPool):
     """
     returns info of the stocks leading up to the optimization,
     such as variance of each stock and the gap between highest and lowest
@@ -53,30 +53,40 @@ def sigmoid(x, x0, k = 1):
     p = 1/(1+z)
     return p
 
-def fbm(H,n=(2**13),T=(1)):
-    """
-    H - hurst index in float format
-    n - number of timesteps as multiple of 2 in float format
-    T - total time can keep 1?? float
+# def fbm(H,n=(2**14),T=(2**14)):
+#     """
+#     H - hurst index in float format
+#     n - number of timesteps as multiple of 2 in float format
+#     T - total time can keep 1?? float
     
-    calls the matlab function from wikipedia
-    ensure import matlab.engine
-    Zdravko Botev (2020). Fractional Brownian motion generator 
-    (https://www.mathworks.com/matlabcentral/fileexchange/38935-fractional-brownian-motion-generator)
-    Kroese, D. P., & Botev, Z. I. (2015). Spatial Process Simulation.
-    In Stochastic Geometry, Spatial Statistics and Random Fields(pp. 369-404)
-    Springer International Publishing, DOI: 10.1007/978-3-319-10064-7_12
-    """
-    T = float(T)
-    n = float(n)
-    H = float(H)
-    
-    #eng = matlab.engine.start_matlab()
-    a = eng.fbm1d(H,n,T)
-    fbm = np.asarray([])
-    for i in range(len(a)):
-        fbm = np.concatenate((fbm,np.asarray(a[i])))
+#     calls the matlab function from wikipedia
+#     ensure import matlab.engine
+#     Zdravko Botev (2020). Fractional Brownian motion generator 
+#     (https://www.mathworks.com/matlabcentral/fileexchange/38935-fractional-brownian-motion-generator)
+#     Kroese, D. P., & Botev, Z. I. (2015). Spatial Process Simulation.
+#     In Stochastic Geometry, Spatial Statistics and Random Fields(pp. 369-404)
+#     Springer International Publishing, DOI: 10.1007/978-3-319-10064-7_12
+#     """
 
-    #plt.plot(np.linspace(0,1,int(n+1)),fbm)
+#     T = float(T)
+#     n = float(n)
+#     H = float(H)
+#     print(type(H))
+#     print(H)
     
-    return fbm
+#     eng = matlab.engine.start_matlab()
+#     a = eng.fbm1d(H,n,T)
+#     fbm = np.asarray([])
+#     for i in range(len(a)):
+#         fbm = np.concatenate((fbm,np.asarray(a[i])))
+
+#     #plt.plot(np.linspace(0,1,int(n+1)),fbm)
+    
+#     return fbm
+
+
+
+
+
+
+
