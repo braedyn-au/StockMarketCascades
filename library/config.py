@@ -7,4 +7,4 @@ stockPool = np.loadtxt('./fbm/fbm20_2_14_june25.txt')
 hurstPool = np.loadtxt('./fbm/fbm20_2_14_june25_hurstpool.txt')
 #hurstPool = hurstPool[1:]
 
-window = 900
+window = 500

@@ -48,7 +48,7 @@ def characterize(stockPool, tmin = 992, tmax = 8192, window=config.window):# sto
             stockChars = pd.concat([stockChars,char])
     return stockChars
 
-def sigmoid(x, x0, k = 1):
+def sigmoid(x, x0, k = 100):
     z = np.exp(-k*(x-x0))
     p = 1/(1+z)
     return p

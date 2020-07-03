@@ -30,6 +30,7 @@ class portfolio:
         self.stockChars = pd.DataFrame()
         self.threshold = 0
         self.maxSharpe = 0
+        self.weightdata = pd.DataFrame()
     
     def optimize(self, t = tinit,first=False, window=config.window ):#, stockPool=stockPool):
         """
@@ -61,6 +62,7 @@ class portfolio:
             for i,j in enumerate(self.stocks):
                 self.weights[j] = round(opt[i]*self.volume/stockPool[j][tinit])
                 self.alloc[j] = opt[i]
+                self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[tinit], 'stock':j,'weight':round(opt[i]*self.volume/stockPool[j][tinit]) })])
             print(-sharpe(list(self.alloc.values()),stockPool,self.stocks,self.volume,ti,t))
         else:
             self.sharpeNonOpt = np.append(self.sharpeNonOpt,-sharpe(self.initAlloc,stockPool,self.stocks,self.volume,ti,t))
@@ -127,6 +129,7 @@ class portfolio:
             if self.orders[i]<0:
                 # SELL
                 self.weights[stock] = weight + self.orders[i]
+                self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[time], 'stock':stock,'weight':weight})])
                 priceChange(stock,time,sell=True)
             i+=1
         return orderList
@@ -137,7 +140,8 @@ class portfolio:
         """
         #print(self.weights)
         self.weights[stock] = self.weights[stock] + volume
-        #print(self.weights)
+        self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[time], 'stock':stock,'weight':self.weights[stock]})])
+        #print(self.weights)            
         priceChange(stock,time,sell=False)
 
     def reset(self, t = tinit, ptile=80):
@@ -155,7 +159,7 @@ class portfolio:
 
         percentile = np.percentile(self.sharpe,ptile)
         p100 = np.max(self.sharpe)
-        self.threshold = (p100+percentile)/2
+        self.threshold = (p100+percentile)/2 # just the 90th percentile
 
         self.sharpe = np.asarray([])
         self.sharpeNonOpt = np.asarray([])
@@ -244,9 +248,9 @@ def uniquePortfGen(n=5, availStocks = np.shape(stockPool)[0]):
         
     return traderIDs
 
-def priceChange(stock,time, sell=True, increment = 0.01):
+def priceChange(stock,time, sell=True, increment = 0.001):
     """
-    
+    Updates the stockPool and hurstPool as price change
     """
     global stockPool, hurstPool 
 
@@ -256,8 +260,8 @@ def priceChange(stock,time, sell=True, increment = 0.01):
     
     if sell:
         h1 = h0-increment
-        if h1<0.2:
-            h1=0.2
+        if h1<0.4:
+            h1=0.4
         hurstPool[stock][time:] = h1
     else:
         h1 = h0+increment
@@ -275,7 +279,7 @@ def stockChars():
     
 def resetStocks():
     """
-    
+    reset global variables
     """
     global stockPool, hurstPool
     stockPool = np.copy(config.stockPool)
@@ -283,7 +287,7 @@ def resetStocks():
 
 def checkReset():
     """
-    
+    make sure reset worked
     """
     if not np.mean(stockPool) == np.mean(config.stockPool) and np.mean(hurstPool) == np.mean(config.stockPool):
         raise Exception("reset not work")
