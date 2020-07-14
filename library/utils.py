@@ -13,19 +13,31 @@ def sharpe( alloc, stockPool, stocks, vol, ti, tf):
     uses allocation percentage instead of weights
     """
     #print(np.shape(stockPool))
-    Rp = 0
-    var = 0
-    Rf = 0.010
-    for i,j in enumerate(stocks): 
-        stepReturn = 100*np.diff(stockPool[j][ti:tf])/stockPool[j][ti:tf-1]
-        Rp += alloc[i]*vol*np.mean(stepReturn)
-        var += alloc[i]*alloc[i]*vol*vol*np.var(stepReturn)
-    stdp = np.sqrt(var)
-    
-    #print(Rp,stdp)
-    if stdp == 0:
-        print("dividebyzero")
-    return -(Rp-Rf)/stdp
+
+    if np.sum(alloc)==0:
+        return 0
+    else:
+        Rp = 0
+        var = 0
+        Rf = 0.010
+        for i,j in enumerate(stocks): 
+            stepReturn = 100*np.diff(stockPool[j][ti:tf])/stockPool[j][ti:tf-1]
+            Rp += alloc[i]*vol*np.mean(stepReturn)
+            var += alloc[i]*alloc[i]*vol*vol*np.var(stepReturn)
+        stdp = np.sqrt(var)
+        
+        #print(Rp,stdp)
+        # if stdp == 0:
+        #     print("alloc: ", alloc)
+        #     print("value: ", vol)
+        #     print("ti: ", ti)
+        #     print("tf: ", tf)
+        #     print("stepReturn: ", stepReturn)
+        #     print("Rp: ", Rp)
+        #     print("var: ", var)
+        #     print("std: ", stdp)
+        #     raise Exception("std = 0??")
+        return -(Rp-Rf)/stdp
 
 def characterize(stockPool, tmin = 992, tmax = 8192, window=config.window):# stockPool=stockPool):
     """
@@ -48,10 +60,27 @@ def characterize(stockPool, tmin = 992, tmax = 8192, window=config.window):# sto
             stockChars = pd.concat([stockChars,char])
     return stockChars
 
-def sigmoid(x, x0, k = 100):
+def sigmoid(x, x0, k = 50):
     z = np.exp(-k*(x-x0))
     p = 1/(1+z)
     return p
+
+def cosineSim(portf1, portf2): #change from .stocks array to the weightdata arrays from objects
+    """
+    takes two portfolio objects and finds overlap between them
+
+    """
+    overlapWeights = 0
+    for i in portf1.stocks:
+        if i in portf2.weights: # find the weights in portf1 and portf2
+            overlapWeights += (portf1.weights[i] + portf2.weights[i]) # actual weight calculation
+    
+    portf1weights = np.asarray(list(portf1.weights.values()))
+    portf2weights = np.asarray(list(portf2.weights.values()))
+    portf1Norm = np.linalg.norm(portf1weights)
+    portf2Norm = np.linalg.norm(portf2weights)
+    
+    return overlapWeights/(portf1Norm*portf2Norm)
 
 # def fbm(H,n=(2**14),T=(2**14)):
 #     """

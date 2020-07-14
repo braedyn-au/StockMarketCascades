@@ -5,32 +5,36 @@ import random
 import string
 from library.utils import sharpe, characterize, sigmoid
 from library import config
-from fbm.fbm import fbm 
+from fbm.fbm import fbm
 # import matlab.engine
 
 # eng = matlab.engine.start_matlab()
 
-stockPool = np.copy(config.stockPool)
-hurstPool = np.copy(config.hurstPool)
-tinit = 992
+stockPool = np.copy(config._stockPool)
+hurstPool = np.copy(config._hurstPool)
+changePrice = config.changePrice
+tinit = config.tinit
+
 
 class portfolio:
     
     def __init__(self,name,size,volume, stocks):
         self.volume = volume
-        #self.stocks = np.random.choice(np.arange(20), size=size, replace=False) # REPLACE
         self.stocks = stocks
-        self.alloc = dict.fromkeys(self.stocks,1/size) #init with a sharpe function,
+        # self.allocTemp = dict.fromkeys(self.stocks,1/size) #init with a sharpe function
+        self.alloc = dict.fromkeys(self.stocks,1/size) 
         self.weights = dict.fromkeys(self.stocks,1) # put in dictionary for easy change
         self.orders = np.zeros(size)
         self.portfID = str(name)
-        self.sharpe = np.asarray([])
+        self.sharpeOpt = np.asarray([])
+        self.sharpeReal = np.asarray([])
         self.initAlloc = np.asarray([])
         self.sharpeNonOpt = np.asarray([])
         self.stockChars = pd.DataFrame()
         self.threshold = 0
         self.maxSharpe = 0
         self.weightdata = pd.DataFrame()
+        self.value = np.asarray([self.volume])
     
     def optimize(self, t = tinit,first=False, window=config.window ):#, stockPool=stockPool):
         """
@@ -48,51 +52,31 @@ class portfolio:
         
         opt= (minimize(sharpe, 
                       list(self.alloc.values()), 
-                      args=(stockPool,self.stocks,self.volume,ti,t), 
+                      args=(stockPool,self.stocks,self.value[-1],ti,t), 
                       method='SLSQP', 
                       bounds=bounds,
                       constraints=cons)['x'])
-        self.sharpe = np.append(self.sharpe,-sharpe(opt,stockPool,self.stocks,self.volume,ti,t))
-        #print('opt: ',opt)
-        #print('sum opt: ', np.sum(opt))
-        # update self.alloc
+
         if first:
             self.initAlloc = opt
-            self.sharpeNonOpt = np.append(self.sharpeNonOpt,-sharpe(self.initAlloc,stockPool,self.stocks,self.volume,ti,t))
             for i,j in enumerate(self.stocks):
                 self.weights[j] = round(opt[i]*self.volume/stockPool[j][tinit])
-                self.alloc[j] = opt[i]
-                self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[tinit], 'stock':j,'weight':round(opt[i]*self.volume/stockPool[j][tinit]) })])
-            print(-sharpe(list(self.alloc.values()),stockPool,self.stocks,self.volume,ti,t))
-        else:
-            self.sharpeNonOpt = np.append(self.sharpeNonOpt,-sharpe(self.initAlloc,stockPool,self.stocks,self.volume,ti,t))
-            #print(self.sharpeNonOpt)
-            for i,j in enumerate(self.stocks):
-                self.alloc[j] = opt[i]
-            return opt
+                self.alloc[j] = self.weights[j]*stockPool[j][tinit]/self.volume
+            print("Optimal Sharpe: ", -sharpe(opt,stockPool,self.stocks,self.volume,ti,t))
+            print("Initial Sharpe: ", -sharpe(list(self.alloc.values()),stockPool,self.stocks,self.volume,ti,t))
     
-    # def characterize(self, tf, window=config.window):# stockPool=stockPool):
-    #     """
-    #     ***moved to utils
-    #     returns info of the stocks leading up to the optimization,
-    #     such as variance of each stock and the gap between highest and lowest
-
-    #     not efficient, better to just have a global stockChars df where I lookup stocks corresponding to each portfolio
-    #     """
-    #     ti = tf-window        
-        
-    #     for stock in self.stocks:
-    #         stepReturn = 100*np.diff(stockPool[stock][ti:tf])/stockPool[stock][ti:tf-1]
-    #         var = np.var(stepReturn)
-    #         std = np.sqrt(var)
-    #         mean = np.mean(stepReturn)
-    #         char = pd.DataFrame({'time':[tf], "portfolio":self.portfID,'stock':stock,'mean':mean,'var':var,'std':std})
-    #         self.stockChars = pd.concat([self.stockChars,char])
+        self.sharpeNonOpt = np.append(self.sharpeNonOpt,-sharpe(self.initAlloc,stockPool,self.stocks,self.value[-1],ti,t))
+        self.sharpeOpt = np.append(self.sharpeOpt,-sharpe(opt,stockPool,self.stocks,self.value[-1],ti,t))
+        self.sharpeReal = np.append(self.sharpeReal,-sharpe(list(self.alloc.values()),stockPool,self.stocks,self.value[-1],ti,t))
+            
+        self.updateWeightData(t)
+            
+        return opt
         
     def thresholdOrder(self, time, window=config.window):
         ti = time-window
         opt = self.optimize(t=time)
-        new = -sharpe(opt,stockPool,self.stocks,self.volume,ti,time)
+        new = -sharpe(opt,stockPool,self.stocks,self.value[-1],ti,time)
         
         pthresh = sigmoid(new,self.threshold)
         puni = np.random.rand()
@@ -106,7 +90,7 @@ class portfolio:
             orderList = pd.DataFrame({'time':time, "portfolio":self.portfID,"stock":self.stocks, "order": blank})
         return orderList
 
-    def order(self, time, opt=None):#, stockPool = stockPool):
+    def order(self, time, opt=None, changePrice = changePrice):#, stockPool = stockPool):
         """
         calls optimize to find opt alloc
         returns the orders to be added to the broker dataframe
@@ -114,11 +98,12 @@ class portfolio:
         """
 
         if opt is None:
+            # Means no thresholding
             opt = self.optimize(t=time)
 
         optweights = []
         for i,j in enumerate(self.stocks):
-            optweights.append(round(opt[i]*self.volume/stockPool[j][time]))
+            optweights.append(round(opt[i]*self.value[-1]/stockPool[j][time]))
         
         self.orders = np.asarray(optweights) - list(self.weights.values())
         orderList = pd.DataFrame({'time':time, "portfolio":self.portfID,"stock":self.stocks, "order": self.orders})
@@ -126,25 +111,45 @@ class portfolio:
         # update weights that have been sent off
         i = 0
         for stock,weight in self.weights.items():
-            if self.orders[i]<0:
-                # SELL
-                self.weights[stock] = weight + self.orders[i]
-                self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[time], 'stock':stock,'weight':weight})])
-                priceChange(stock,time,sell=True)
+            # if self.orders[i]<0:
+                # SELL or BUY
+            self.weights[stock] = weight + self.orders[i]
+            ivalue = self.value[-1]
+            self.value = np.append(self.value, ivalue + self.orders[i]*stockPool[stock][time])
+
+            if changePrice and self.orders[i]!=0:
+                priceChange_random(stock,time,volume=self.orders[i])
+
             i+=1
+
+        for stock,weight in self.weights.items():
+            # renormalize alloc based on final newest value
+            self.alloc[stock] = self.weights[stock]*stockPool[stock][time]/self.value[-1]
+    
         return orderList
     
-    def buy(self,stock,time,volume):
+    def buy(self,stock,time,volume, changePrice=changePrice):
         """
-        adjust recently bought stocks, 
+        adjust recently bought stocks, volume of stock bought
+        merged from broker_funcs with order for instant buy/sell 
         """
-        #print(self.weights)
         self.weights[stock] = self.weights[stock] + volume
-        self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[time], 'stock':stock,'weight':self.weights[stock]})])
-        #print(self.weights)            
-        priceChange(stock,time,sell=False)
+        ivalue = self.value[-1]
+        self.value = np.append(self.value, ivalue + volume*stockPool[stock][time])
+        # self.alloc[stock] = self.weights[stock]*stockPool[stock][time]/self.value[-1] needs to be done all at once
+        if changePrice:
+            priceChange_random(stock,time,volume=volume)
 
-    def reset(self, t = tinit, ptile=80):
+
+    def updateWeightData(self, time):
+        """
+        update the weightData table to current weights of each stock
+        """
+        for stock, weight in self.weights.items():
+            self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[time], 'stock':stock,'weight':self.weights[stock]})])
+
+
+    def reset(self, t = tinit, ptile=70):
         """
         only to be used once after dry run
         reset alloc and time, find the sharpe ratio threshold for sigmoid
@@ -156,13 +161,12 @@ class portfolio:
         self.initAlloc = np.asarray([])
         self.weights = dict.fromkeys(self.stocks,1) # put in dictionary for easy change
         self.orders = np.zeros(size)
-
-        percentile = np.percentile(self.sharpe,ptile)
-        p100 = np.max(self.sharpe)
-        self.threshold = (p100+percentile)/2 # just the 90th percentile
-
-        self.sharpe = np.asarray([])
+        percentile = np.percentile(self.sharpeReal,ptile)
+        self.threshold = percentile # just the ptile
+        self.sharpeOpt = np.asarray([])
+        self.sharpeReal = np.asarray([])
         self.sharpeNonOpt = np.asarray([])
+
         self.optimize(first=True)
         print('reset!')
         print('threshold: ',self.threshold)
@@ -172,7 +176,7 @@ class portfolio:
         checkReset()
 
         
-def portfGen(stockPool=stockPool, n=5, sizeMin=5, sizeMax=7, overlapMin = 3, overlapMax=5):
+def portfGen(stockPool=stockPool, n=config.nportfs, sizeMin=config.minPortfSize, sizeMax=config.maxPortfSize, overlapMin = config.overlapMin, overlapMax=config.overlapMax):
     """
     updated to include overlap function june 25
     """
@@ -224,6 +228,9 @@ def portfGen(stockPool=stockPool, n=5, sizeMin=5, sizeMax=7, overlapMin = 3, ove
     return traderIDs
     
 def uniquePortfGen(n=5, availStocks = np.shape(stockPool)[0]):
+    """
+    no overlap
+    """
     traderIDs = {}
     
     def randString(length = 5):
@@ -248,17 +255,38 @@ def uniquePortfGen(n=5, availStocks = np.shape(stockPool)[0]):
         
     return traderIDs
 
-def priceChange(stock,time, sell=True, increment = 0.001):
+def stockChars():
+    return stockPool,hurstPool
+    
+def resetStocks():
+    """
+    reset global variables
+    """
+    global stockPool, hurstPool
+    stockPool = np.copy(config._stockPool)
+    hurstPool = np.copy(config._hurstPool)
+
+def checkReset():
+    """
+    make sure reset worked
+    """
+    if not np.mean(stockPool) == np.mean(config._stockPool) and np.mean(hurstPool) == np.mean(_config.stockPool):
+        raise Exception("reset not work")
+
+def priceChange_updown(stock, time, volume, proportion = 10000):
     """
     Updates the stockPool and hurstPool as price change
+    Sell => decrease Hurst (more volatile)
+    Buy => increase Hurst (less volatile)
     """
     global stockPool, hurstPool 
 
+    increment = volume/proportion
     h0 = hurstPool[stock][time]
     numberNewPrices = len(stockPool[stock][time:])
     p0 = stockPool[stock][time]
     
-    if sell:
+    if volume<0:
         h1 = h0-increment
         if h1<0.4:
             h1=0.4
@@ -274,21 +302,32 @@ def priceChange(stock,time, sell=True, increment = 0.001):
     print('stock ', stock, ' original H', h0, ' to ', h1)
     stockPool[stock][time:]=fbmNew
 
-def stockChars():
-    return stockPool,hurstPool
-    
-def resetStocks():
+def priceChange_random(stock, time, volume, proportion = 1000):
     """
-    reset global variables
+    Updates the stockPool and hurstPool as price change
+    Random +/- increment to Hurst
     """
-    global stockPool, hurstPool
-    stockPool = np.copy(config.stockPool)
-    hurstPool = np.copy(config.hurstPool)
+    global stockPool, hurstPool 
 
-def checkReset():
-    """
-    make sure reset worked
-    """
-    if not np.mean(stockPool) == np.mean(config.stockPool) and np.mean(hurstPool) == np.mean(config.stockPool):
-        raise Exception("reset not work")
+    increment = np.random.choice(np.linspace(-volume/proportion,volume/proportion,7))
+
+    if increment != 0:
+        # print(volume)
+        # print(increment)
+        h0 = hurstPool[stock][time]
+        numberNewPrices = len(stockPool[stock][time:])
+        p0 = stockPool[stock][time]
+        
+        h1 = h0+increment
+        if h1<0.4:
+            h1=0.4
+        elif h1>0.8:
+            h1=0.8
+        
+        hurstPool[stock][time:] = h1
+        fbmNew = fbm(h1,2**14,2**14)
+        fbmNew = abs(fbmNew[:numberNewPrices]+p0)
+        # print('stock ', stock, ' original H', h0, ' to ', h1)
+        stockPool[stock][time:]=fbmNew
+
 

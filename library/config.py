@@ -1,10 +1,16 @@
 import numpy as np 
 
-stockPool = np.loadtxt('./fbm/fbm20_2_14_june25.txt')
-#stockPool = stockPool[1:]
-
-
-hurstPool = np.loadtxt('./fbm/fbm20_2_14_june25_hurstpool.txt')
-#hurstPool = hurstPool[1:]
-
 window = 500
+changePrice = True
+nportfs = 50
+minPortfSize = 9
+maxPortfSize = 12
+overlapMin = 8
+overlapMax = 10
+tinit = 992
+stockPool = './fbm/fbm100_2_14_july6.txt'
+hurstPool = './fbm/fbm100_2_14_july6_hurstpool.txt'
+_stockPool = np.loadtxt(stockPool)
+_hurstPool = np.loadtxt(hurstPool)
+
+config = {k:v for k, v in locals().items() if not k.startswith('_')}
