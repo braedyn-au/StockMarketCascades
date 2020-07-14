@@ -95,7 +95,7 @@ def match(traderIDs, broker, transactions):
                 #print(bMatch.portfolio)
                 #print(traderIDs[bMatch.portfolio])
                 buyer = traderIDs[bMatch.portfolio]
-                buyer.buy(stock,Vol)
+                buyer.buy(stock= stock,time=ToS,volume= Vol)
 
 
                 buy = buy[buy.order!=0]
@@ -130,7 +130,7 @@ def instantMatch(traderIDs, broker, transactions):
         trader = traderIDs[broker.iloc[sID].portfolio]
 
         if Vol > 0:
-            trader.buy(stock=stock,time=ToS,volume=Vol)
+            # trader.buy(stock=stock,time=ToS,volume=Vol) moved buy call to portfolio 
             sale = pd.DataFrame({"ToS":[ToS], "stock":stock, "seller": 'world', 
                              "buyer": trader.portfID, "volume": Vol, 
                              "tradeID": str(ToS)+'|'+str(stock)+str('world')
@@ -148,16 +148,7 @@ def instantMatch(traderIDs, broker, transactions):
     broker = broker[broker.order!=0]
     
     if len(broker) != 0:
-        print('OOPS len(broker) != 0')
-
-        #print("sale")
-
-        #update buyer weights
-        #print(bMatch.portfolio)
-        #print(traderIDs[bMatch.portfolio])
-
-
-    
+        raise Exception("len(broker) != 0...instantMatch should match all orders")
     return broker, transactions
 
 
