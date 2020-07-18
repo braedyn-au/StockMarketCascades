@@ -21,8 +21,8 @@ class portfolio:
     def __init__(self,name,size,volume, stocks):
         self.volume = volume
         self.stocks = stocks
-        # self.allocTemp = dict.fromkeys(self.stocks,1/size) #init with a sharpe function
         self.alloc = dict.fromkeys(self.stocks,1/size) 
+        self.alloc['cash'] = 0 # cash  
         self.weights = dict.fromkeys(self.stocks,1) # put in dictionary for easy change
         self.orders = np.zeros(size)
         self.portfID = str(name)
@@ -34,7 +34,9 @@ class portfolio:
         self.threshold = 0
         self.maxSharpe = 0
         self.weightdata = pd.DataFrame()
+        self.valuedata = pd.DataFrame()
         self.value = np.asarray([self.volume])
+        self.cash = np.asarray([])
     
     def optimize(self, t = tinit,first=False, window=config.window ):#, stockPool=stockPool):
         """
@@ -47,9 +49,24 @@ class portfolio:
         cons = ({'type':'eq','fun':check_sum})
         
         bounds = []
-        for i in range(len(self.stocks)):
+        for i in range(len(self.stocks)+1):
             bounds.append((0,1))
-        
+
+        # check alloc percent equals 1
+        try:
+            assert round(np.sum(list(self.alloc.values()))) == 1
+        except:
+            print('/n')
+            print("PortfID: ", self.portfID)
+            print('Alloc: ',self.alloc)
+            print('Weight: ', self.weights)
+            print("Init Value: ", self.volume)
+            print('Value: ', self.value[-1])
+            print('Sharpe: ', self.sharpeReal)
+            print('Sharpe Opt: ', self.sharpeOpt)
+            print("Non 100 allocation")
+            raise
+
         opt= (minimize(sharpe, 
                       list(self.alloc.values()), 
                       args=(stockPool,self.stocks,self.value[-1],ti,t), 
@@ -60,8 +77,11 @@ class portfolio:
         if first:
             self.initAlloc = opt
             for i,j in enumerate(self.stocks):
-                self.weights[j] = round(opt[i]*self.volume/stockPool[j][tinit])
+                self.weights[j] = np.floor(opt[i]*self.volume/stockPool[j][tinit])
                 self.alloc[j] = self.weights[j]*stockPool[j][tinit]/self.volume
+            self.alloc['cash'] = 1 - np.sum(list(self.alloc.values())[:-1])
+            self.cash = np.append(self.cash,self.alloc['cash']*self.volume)
+            print('Cash: ', self.alloc['cash'], "| $",self.cash[-1])
             print("Optimal Sharpe: ", -sharpe(opt,stockPool,self.stocks,self.volume,ti,t))
             print("Initial Sharpe: ", -sharpe(list(self.alloc.values()),stockPool,self.stocks,self.volume,ti,t))
     
@@ -69,11 +89,11 @@ class portfolio:
         self.sharpeOpt = np.append(self.sharpeOpt,-sharpe(opt,stockPool,self.stocks,self.value[-1],ti,t))
         self.sharpeReal = np.append(self.sharpeReal,-sharpe(list(self.alloc.values()),stockPool,self.stocks,self.value[-1],ti,t))
             
-        self.updateWeightData(t)
             
         return opt
         
     def thresholdOrder(self, time, window=config.window):
+        self.updateWeightData(time)
         ti = time-window
         opt = self.optimize(t=time)
         new = -sharpe(opt,stockPool,self.stocks,self.value[-1],ti,time)
@@ -86,7 +106,7 @@ class portfolio:
             print('order sent')
             orderList = self.order(time,opt=opt)
         else:
-            blank = np.zeros(len(opt))
+            blank = np.zeros(len(self.stocks))
             orderList = pd.DataFrame({'time':time, "portfolio":self.portfID,"stock":self.stocks, "order": blank})
         return orderList
 
@@ -100,32 +120,49 @@ class portfolio:
         if opt is None:
             # Means no thresholding
             opt = self.optimize(t=time)
+            self.updateWeightData(time)
 
         optweights = []
         for i,j in enumerate(self.stocks):
-            optweights.append(round(opt[i]*self.value[-1]/stockPool[j][time]))
+            optweights.append(np.floor(opt[i]*self.value[-1]/stockPool[j][time]))
         
         self.orders = np.asarray(optweights) - list(self.weights.values())
         orderList = pd.DataFrame({'time':time, "portfolio":self.portfID,"stock":self.stocks, "order": self.orders})
-        
-        # update weights that have been sent off
+    
+        # update weights that have been sent off and portfolio value
         i = 0
+        fvalue = 0
+        fcash = self.cash[-1]
         for stock,weight in self.weights.items():
-            # if self.orders[i]<0:
-                # SELL or BUY
             self.weights[stock] = weight + self.orders[i]
-            ivalue = self.value[-1]
-            self.value = np.append(self.value, ivalue + self.orders[i]*stockPool[stock][time])
+            if self.orders[i]<0:
+                #SELL
+                fcash += -self.orders[i]*stockPool[stock][time]
+            elif self.orders[i]>0:
+                #BUY
+                fcash += -self.orders[i]*stockPool[stock][time]
+        
+            # Update portfolio net value
+            fvalue += self.weights[stock]*stockPool[stock][time]
 
             if changePrice and self.orders[i]!=0:
                 priceChange_random(stock,time,volume=self.orders[i])
 
             i+=1
 
+        fvalue += fcash
+        self.value = np.append(self.value,fvalue)            
+        self.cash = np.append(self.cash, fcash)        
+        # renormalize alloc based on new portfolio value
         for stock,weight in self.weights.items():
-            # renormalize alloc based on final newest value
-            self.alloc[stock] = self.weights[stock]*stockPool[stock][time]/self.value[-1]
-    
+            self.alloc[stock] = self.weights[stock]*stockPool[stock][time]/self.value[-1] # i think this works
+        
+        # get cash percentage by normalizing weight
+        self.alloc['cash'] = fcash/self.value[-1]
+
+        if self.alloc['cash'] < 0 :
+            print(self.portfID, " cash allocation negative at ", self.alloc['cash'])
+
         return orderList
     
     def buy(self,stock,time,volume, changePrice=changePrice):
@@ -146,8 +183,9 @@ class portfolio:
         update the weightData table to current weights of each stock
         """
         for stock, weight in self.weights.items():
-            self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[time], 'stock':stock,'weight':self.weights[stock]})])
-
+            self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[time-1], 'stock':stock,'weight':self.weights[stock]})])
+        self.valuedata = pd.concat([self.valuedata, pd.DataFrame({'ID':self.portfID, 'time': [time-1], 'value': self.value[-1], 'cash': self.cash[-1]})])
+        # TODO: calculate actual current value
 
     def reset(self, t = tinit, ptile=70):
         """
@@ -158,6 +196,7 @@ class portfolio:
 
         size = len(self.stocks)
         self.alloc = dict.fromkeys(self.stocks,1/size) #init with a sharpe function,
+        self.alloc['cash'] = 0
         self.initAlloc = np.asarray([])
         self.weights = dict.fromkeys(self.stocks,1) # put in dictionary for easy change
         self.orders = np.zeros(size)
@@ -166,7 +205,14 @@ class portfolio:
         self.sharpeOpt = np.asarray([])
         self.sharpeReal = np.asarray([])
         self.sharpeNonOpt = np.asarray([])
-
+        self.cash = np.asarray([])
+        self.value = np.asarray([self.volume])
+        self.weightdata = pd.DataFrame()
+        self.valuedata = pd.DataFrame()
+        # print(self.stocks)
+        # print(self.alloc)
+        # print(self.value)
+        
         self.optimize(first=True)
         print('reset!')
         print('threshold: ',self.threshold)
