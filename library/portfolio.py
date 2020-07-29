@@ -81,9 +81,9 @@ class portfolio:
                 self.alloc[j] = self.weights[j]*stockPool[j][tinit]/self.volume
             self.alloc['cash'] = 1 - np.sum(list(self.alloc.values())[:-1])
             self.cash = np.append(self.cash,self.alloc['cash']*self.volume)
-            print('Cash: ', self.alloc['cash'], "| $",self.cash[-1])
-            print("Optimal Sharpe: ", -sharpe(opt,stockPool,self.stocks,self.volume,ti,t))
-            print("Initial Sharpe: ", -sharpe(list(self.alloc.values()),stockPool,self.stocks,self.volume,ti,t))
+            #print('Cash: ', self.alloc['cash'], "| $",self.cash[-1])
+            #print("Optimal Sharpe: ", -sharpe(opt,stockPool,self.stocks,self.volume,ti,t))
+            #print("Initial Sharpe: ", -sharpe(list(self.alloc.values()),stockPool,self.stocks,self.volume,ti,t))
     
         self.sharpeNonOpt = np.append(self.sharpeNonOpt,-sharpe(self.initAlloc,stockPool,self.stocks,self.value[-1],ti,t))
         self.sharpeOpt = np.append(self.sharpeOpt,-sharpe(opt,stockPool,self.stocks,self.value[-1],ti,t))
@@ -97,13 +97,19 @@ class portfolio:
         ti = time-window
         opt = self.optimize(t=time)
         new = -sharpe(opt,stockPool,self.stocks,self.value[-1],ti,time)
-        self.threshold = np.percentile(self.sharpeReal, config.threshold) 
-        pthresh = sigmoid(new,self.threshold)
+        if config.threshold == 100:
+            self.threshold = self.sharpeReal[-1]
+        else:
+            self.threshold = np.percentile(self.sharpeReal[-config.window:], config.threshold) 
+        if new > self.threshold:
+            pthresh = sigmoid(new,self.threshold)
+        else:
+            pthresh = 0
         puni = np.random.rand()
-        print("rebalance prob: ", pthresh)
-        print("roll: ", puni)
+        print("reprob: ", pthresh, " | nsharpe: ", new, ' tsharpe: ', self.threshold*config.leak, ' csharpe: ', self.sharpeReal[-1],' | ',time,'/',config.simsteps+config.tinit,' | val:',round(self.value[-1]),'/',self.volume,' | thresh:',config.threshold,)
+        #print("roll: ", puni)
         if puni < pthresh:
-            print('order sent')
+            #print('order sent')
             orderList = self.order(time,opt=opt)
         else:
             blank = np.zeros(len(self.stocks))
@@ -231,7 +237,7 @@ def portfGen(stockPool=stockPool, n=config.nportfs, sizeMin=config.minPortfSize,
     updated to include overlap function june 25
     """
     stocks = np.arange(np.shape(stockPool)[0]) #check if 0 or 1
-    print(stocks)
+    #print(stocks)
     traderIDs = {}
     
     def randString(length = 5):
@@ -255,18 +261,18 @@ def portfGen(stockPool=stockPool, n=config.nportfs, sizeMin=config.minPortfSize,
 
         startpos = indx % len(stocks)
         name = randString()
-        print(name)
+       # print(name)
         while name in traderIDs:
             name = randString()
     #     print(startpos)
     #     print(stocks)
     #     print(startpos, ":", startpos+window)
         if startpos+window >= len(stocks):
-            print('overflow ', startpos+window)
+        #    print('overflow ', startpos+window)
             stocks2 = np.concatenate([stocks,stocks])
             tstocks = np.copy(stocks2[startpos:startpos+window])
             np.random.shuffle(stocks)
-            print("shuffled")
+        #    print("shuffled")
         else:
             tstocks = np.copy(stocks[startpos:startpos+window])
         traderIDs[name] = portfolio(name, window, vol, tstocks)
@@ -392,13 +398,13 @@ def priceChange(time, changePrice=changePrice):
             h0 = hurstPool[stock][time]
             h1 = hurstPool[stock][time+1]
             if h1!=h0:
-                print("stock: ", stock, " | change H: ",h1-h0)
+#                print("stock: ", stock, " | change H: ",h1-h0, "|", time,'/',config.simsteps+config.tinit,'|',config.nportfs,'|',config.threshold,'|',config.sigmoid)
                 numberNewPrices = len(stockPool[stock][time+1:])
                 p0 = stockPool[stock][time]
                 #fbmNew = fbm(h1, 2**14,2**14)
                 f = fbm.FBM(n=2**14,hurst=h1,length=2**5, method='daviesharte')
-		fbmNew = f.fbm()
-		fbmNew = abs(fbmNew[:numberNewPrices]+p0)
+                fbmNew = f.fbm()
+                fbmNew = abs(fbmNew[:numberNewPrices]+p0)
                 stockPool[stock][time+1:]=fbmNew
             
 
