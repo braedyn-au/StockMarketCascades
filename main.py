@@ -3,7 +3,7 @@ from library import config, utils, broker_funcs, portfolio
 import numpy as np
 import pandas as pd
 # import matplotlib.pyplot as plt
-from fbm.fbm import fbm
+from fbm.fbmlib import fbm
 import time
 import pickle
 

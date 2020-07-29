@@ -5,7 +5,7 @@ import random
 import string
 from library.utils import sharpe, characterize, sigmoid
 from library import config
-from fbm.fbm import fbm
+from fbm.fbmlib import fbm
 # import matlab.engine
 
 # eng = matlab.engine.start_matlab()
