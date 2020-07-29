@@ -5,9 +5,9 @@ import random
 import string
 from library.utils import sharpe, characterize, sigmoid
 from library import config
-from fbm.fbm import fbm
+#from fbm.fbm import fbm
 # import matlab.engine
-
+import fbm 
 # eng = matlab.engine.start_matlab()
 
 stockPool = np.copy(config._stockPool)
@@ -395,8 +395,10 @@ def priceChange(time, changePrice=changePrice):
                 print("stock: ", stock, " | change H: ",h1-h0)
                 numberNewPrices = len(stockPool[stock][time+1:])
                 p0 = stockPool[stock][time]
-                fbmNew = fbm(h1, 2**14,2**14)
-                fbmNew = abs(fbmNew[:numberNewPrices]+p0)
+                #fbmNew = fbm(h1, 2**14,2**14)
+                f = fbm.FBM(n=2**14,hurst=h1,length=2**5, method='daviesharte')
+		fbmNew = f.fbm()
+		fbmNew = abs(fbmNew[:numberNewPrices]+p0)
                 stockPool[stock][time+1:]=fbmNew
             
 

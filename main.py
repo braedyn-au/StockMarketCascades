@@ -3,7 +3,7 @@ from library import config, utils, broker_funcs, portfolio
 import numpy as np
 import pandas as pd
 # import matplotlib.pyplot as plt
-from fbm.fbm import fbm
+#from fbm.fbm import fbm
 import time
 import pickle
 
@@ -21,47 +21,30 @@ transactions = pd.DataFrame()
 totalOrders = pd.DataFrame()
 broker = pd.DataFrame()
 
-for t in range(993,4592):
+for t in range(config.tinit+1,config.tinit+1+config.simsteps):
     broker, totalOrders = broker_funcs.thresholdBrokerage(traderIDs, t, broker, totalOrders)
     broker, transactions = broker_funcs.instantMatch(traderIDs, broker, transactions)
     portfolio.priceChange(time=t)
-    print("New threshold 500", t)
-
-# with open('./results/traderIDs_cpu_nothreshold' + '.pkl', 'wb') as f:
-#     pickle.dump(traderIDs, f, pickle.HIGHEST_PROTOCOL)
-
-# Ttransactions = pd.DataFrame()
-# TtotalOrders = pd.DataFrame()
-# Tbroker = pd.DataFrame()
-
-# for key,portf in traderIDs.items():
-#     portf.reset(ptile=70)
-
-# for t in range (993,4592):
-#     Tbroker, TtotalOrders = broker_funcs.thresholdBrokerage(traderIDs, t, Tbroker, TtotalOrders)
-#     Tbroker, Ttransactions = broker_funcs.instantMatch(traderIDs, Tbroker, Ttransactions)
-#     portfolio.priceChange(time=t)
-#     print(t)
-
+    print("New threshold " +config.nportfs,config.threshold+" | ", t)
 
 t1 = time.localtime()
 t1str = time.strftime("%H:%M:%S",t1)
 
 
 
-with open('./results/traderIDs_500_newthreshold' + '.pkl', 'wb') as f:
+with open('./results/traderIDs_'+config.nportfs+'_1000_'+config.threshold + '.pkl', 'wb') as f:
     pickle.dump(traderIDs, f, pickle.HIGHEST_PROTOCOL)
 
 print("CPU RUN TIME | nportfs: ", config.nportfs)
 print(t0str)
 print(t1str)
-
+print(config.config)
 TstockPool, ThurstPool = portfolio.stockChars()
 
-transactions.to_csv('./results/transactions_500_newthreshold.csv')
-totalOrders.to_csv('./results/totalOrders_500_newthreshold.csv')
-np.save('./results/stockPool_500_newthreshold.npy',TstockPool)
-np.save('./results/hurstPool_500_newthreshold.npy',ThurstPool)
-conf = open('./results/config_500_newthresholded' + '.txt',"w")
+transactions.to_csv('./results/transactions_'+config.nportfs+'_'+config.simsteps+'_'+config.threshold+'newthreshold.csv')
+totalOrders.to_csv('./results/totalOrders_'+config.nportfs+'_'+config.simsteps+'_'+config.threshold+'newthreshold.csv')
+np.save('./results/stockPool_'+config.nportfs+'_'+config.simsteps+'_'+config.threshold+'newthreshold.npy',TstockPool)
+np.save('./results/hurstPool_'+config.nportfs+'_'+config.simsteps+'_'+config.threshold+'newthreshold.npy',ThurstPool)
+conf = open('./results/config_'+config.nportfs+'_'+config.simsteps+'_'+config.threshold+'newthresholded' + '.txt',"w")
 conf.write(str(config.config))
 conf.close()
