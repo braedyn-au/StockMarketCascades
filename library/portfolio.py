@@ -97,7 +97,7 @@ class portfolio:
         ti = time-window
         opt = self.optimize(t=time)
         new = -sharpe(opt,stockPool,self.stocks,self.value[-1],ti,time)
-        self.threshold = np.percentile(self.sharpeReal, 80) 
+        self.threshold = np.percentile(self.sharpeReal, config.threshold) 
         pthresh = sigmoid(new,self.threshold)
         puni = np.random.rand()
         print("rebalance prob: ", pthresh)
