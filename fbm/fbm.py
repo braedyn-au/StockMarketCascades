@@ -1,3 +1,5 @@
+print("Importing MATLAB")
+
 import matlab.engine
 import numpy as np
 eng = matlab.engine.start_matlab()
@@ -21,10 +23,7 @@ def fbm(H,n=(2**14),T=(2**14)):
     T = float(T)
     n = float(n)
     H = float(H)
-    #print(type(H))
-    #print(H)
-    
-    #eng = matlab.engine.start_matlab()
+
     a = eng.fbm1d(H,n,T)
     fbm = np.asarray([])
     for i in range(len(a)):

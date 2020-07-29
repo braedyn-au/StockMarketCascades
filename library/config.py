@@ -2,7 +2,7 @@ import numpy as np
 
 window = 500
 changePrice = True
-nportfs = 50
+nportfs = 1000
 minPortfSize = 9
 maxPortfSize = 12
 overlapMin = 8

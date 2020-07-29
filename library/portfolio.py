@@ -97,7 +97,7 @@ class portfolio:
         ti = time-window
         opt = self.optimize(t=time)
         new = -sharpe(opt,stockPool,self.stocks,self.value[-1],ti,time)
-        
+        self.threshold = np.percentile(self.sharpeReal, 80) 
         pthresh = sigmoid(new,self.threshold)
         puni = np.random.rand()
         print("rebalance prob: ", pthresh)
@@ -146,7 +146,7 @@ class portfolio:
             fvalue += self.weights[stock]*stockPool[stock][time]
 
             if changePrice and self.orders[i]!=0:
-                priceChange_random(stock,time,volume=self.orders[i])
+                hurstChange_random(stock,time,volume=self.orders[i])
 
             i+=1
 
@@ -167,6 +167,7 @@ class portfolio:
     
     def buy(self,stock,time,volume, changePrice=changePrice):
         """
+        LEGACY
         adjust recently bought stocks, volume of stock bought
         merged from broker_funcs with order for instant buy/sell 
         """
@@ -175,15 +176,20 @@ class portfolio:
         self.value = np.append(self.value, ivalue + volume*stockPool[stock][time])
         # self.alloc[stock] = self.weights[stock]*stockPool[stock][time]/self.value[-1] needs to be done all at once
         if changePrice:
-            priceChange_random(stock,time,volume=volume)
+            hurstChange_random(stock,time,volume=volume)
 
 
     def updateWeightData(self, time):
         """
-        update the weightData table to current weights of each stock
+        update the weightData and valueData tables to current weights of each stock
         """
+
+        fvalue = 0
         for stock, weight in self.weights.items():
             self.weightdata = pd.concat([self.weightdata,pd.DataFrame({'ID':self.portfID,'time':[time-1], 'stock':stock,'weight':self.weights[stock]})])
+            fvalue += self.weights[stock]*stockPool[stock][time]
+        fvalue += self.cash[-1]
+        self.value = np.append(self.value,fvalue) 
         self.valuedata = pd.concat([self.valuedata, pd.DataFrame({'ID':self.portfID, 'time': [time-1], 'value': self.value[-1], 'cash': self.cash[-1]})])
         # TODO: calculate actual current value
 
@@ -209,9 +215,7 @@ class portfolio:
         self.value = np.asarray([self.volume])
         self.weightdata = pd.DataFrame()
         self.valuedata = pd.DataFrame()
-        # print(self.stocks)
-        # print(self.alloc)
-        # print(self.value)
+
         
         self.optimize(first=True)
         print('reset!')
@@ -250,7 +254,6 @@ def portfGen(stockPool=stockPool, n=config.nportfs, sizeMin=config.minPortfSize,
         vol = 10**(np.random.randint(4,6))
 
         startpos = indx % len(stocks)
-        window = np.random.randint(12,18)
         name = randString()
         print(name)
         while name in traderIDs:
@@ -319,7 +322,7 @@ def checkReset():
     if not np.mean(stockPool) == np.mean(config._stockPool) and np.mean(hurstPool) == np.mean(_config.stockPool):
         raise Exception("reset not work")
 
-def priceChange_updown(stock, time, volume, proportion = 10000):
+def hurstChange_updown(stock, time, volume, proportion = 10000):
     """
     Updates the stockPool and hurstPool as price change
     Sell => decrease Hurst (more volatile)
@@ -329,26 +332,26 @@ def priceChange_updown(stock, time, volume, proportion = 10000):
 
     increment = volume/proportion
     h0 = hurstPool[stock][time]
-    numberNewPrices = len(stockPool[stock][time:])
+    numberNewPrices = len(stockPool[stock+1][time:])
     p0 = stockPool[stock][time]
     
     if volume<0:
         h1 = h0-increment
         if h1<0.4:
             h1=0.4
-        hurstPool[stock][time:] = h1
+        hurstPool[stock][time+1:] = h1
     else:
         h1 = h0+increment
         if h1>0.8:
             h1=0.8
-        hurstPool[stock][time:] = h1
+        hurstPool[stock][time+1:] = h1
 
-    fbmNew = fbm(h1,2**14,2**14)
-    fbmNew = abs(fbmNew[:numberNewPrices]+p0)
+    # fbmNew = fbm(h1,2**14,2**14)
+    # fbmNew = abs(fbmNew[:numberNewPrices]+p0)
     print('stock ', stock, ' original H', h0, ' to ', h1)
-    stockPool[stock][time:]=fbmNew
+    # stockPool[stock][time:]=fbmNew
 
-def priceChange_random(stock, time, volume, proportion = 1000):
+def hurstChange_random(stock, time, volume, proportion = 1000):
     """
     Updates the stockPool and hurstPool as price change
     Random +/- increment to Hurst
@@ -360,20 +363,41 @@ def priceChange_random(stock, time, volume, proportion = 1000):
     if increment != 0:
         # print(volume)
         # print(increment)
-        h0 = hurstPool[stock][time]
-        numberNewPrices = len(stockPool[stock][time:])
-        p0 = stockPool[stock][time]
+        h0 = hurstPool[stock][time+1]
+        # numberNewPrices = len(stockPool[stock][time+1:])
+        # p0 = stockPool[stock][time]
         
         h1 = h0+increment
-        if h1<0.4:
-            h1=0.4
-        elif h1>0.8:
-            h1=0.8
+        if h1<0.45:
+            h1=0.2
+        elif h1>0.75:
+            h1=0.75
         
-        hurstPool[stock][time:] = h1
-        fbmNew = fbm(h1,2**14,2**14)
-        fbmNew = abs(fbmNew[:numberNewPrices]+p0)
-        # print('stock ', stock, ' original H', h0, ' to ', h1)
-        stockPool[stock][time:]=fbmNew
+        hurstPool[stock][time+1:] = h1
+        # fbmNew = fbm(h1,2**14,2**14)
+        # fbmNew = abs(fbmNew[:numberNewPrices]+p0)
+        # if stock == 0:
+        #     print('stock ', stock, ' original H', h0, ' to ', h1, " | ", h1-h0)
+        # stockPool[stock][time+1:]=fbmNew
+
+def priceChange(time, changePrice=changePrice):
+    """
+    takes the newest updated hurst index and pushes new price
+    added july 27
+    """
+    global stockPool, hurstPool
+    
+    if changePrice == True:
+        for stock in range(len(stockPool)):
+            h0 = hurstPool[stock][time]
+            h1 = hurstPool[stock][time+1]
+            if h1!=h0:
+                print("stock: ", stock, " | change H: ",h1-h0)
+                numberNewPrices = len(stockPool[stock][time+1:])
+                p0 = stockPool[stock][time]
+                fbmNew = fbm(h1, 2**14,2**14)
+                fbmNew = abs(fbmNew[:numberNewPrices]+p0)
+                stockPool[stock][time+1:]=fbmNew
+            
 
 
