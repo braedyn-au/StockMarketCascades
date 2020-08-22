@@ -147,6 +147,9 @@ def findStockCascades(stockTrans, maxSep = 10):
         return []
 
 def weightvarMovie(portf,TstockChars,TstockPool):
+    """
+    aug 21 update to show +/- returns and color code each stock and average over time
+    """
     ovar = np.array([])
     oalloc = np.array([])
     ocashalloc = 0
