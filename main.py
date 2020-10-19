@@ -8,10 +8,10 @@ import time
 import pickle
 import os 
 
-assert config.changePrice == True
+#assert config.changePrice == True
 
 print(config.config)
-rpath = 'results/'+str(config.overlapMin)+'-'+str(config.overlapMax)+'/'
+rpath = 'results/nopricechange/'+str(config.overlapMin)+'-'+str(config.overlapMax)+'/'
 if not os.path.exists(rpath):
         os.makedirs(rpath)
 print('saving to: ', rpath)
@@ -35,7 +35,7 @@ t1 = time.localtime()
 t1str = time.strftime("%H:%M:%S",t1)
 
 
-with open(rpath+'traderIDs_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold) + '_new2threshold.pkl', 'wb') as f:
+with open(rpath+'traderIDs_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold) + '_new2threshold_fixedhurst.pkl', 'wb') as f:
     pickle.dump(traderIDs, f, pickle.HIGHEST_PROTOCOL)
 
 print("CPU RUN TIME | nportfs: ", config.nportfs)
@@ -44,10 +44,10 @@ print(t1str)
 print(config.config)
 TstockPool, ThurstPool = portfolio.stockChars()
 
-transactions.to_csv(rpath+'transactions_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2threshold.csv')
-totalOrders.to_csv(rpath+'totalOrders_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2threshold.csv')
-np.save(rpath +'stockPool_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2threshold.npy',TstockPool)
-np.save(rpath +'hurstPool_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2threshold.npy',ThurstPool)
-conf = open(rpath+'config_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2thresholded' + '.txt',"w")
+transactions.to_csv(rpath+'transactions_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2threshold_fixedhurst.csv')
+totalOrders.to_csv(rpath+'totalOrders_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2threshold_fixedhurst.csv')
+np.save(rpath +'stockPool_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2threshold_fixedhurst.npy',TstockPool)
+np.save(rpath +'hurstPool_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2threshold_fixedhurst.npy',ThurstPool)
+conf = open(rpath+'config_'+str(config.nportfs)+'_'+str(config.simsteps)+'_'+str(config.threshold)+'_new2thresholded_fixedhurst' + '.txt',"w")
 conf.write(str(config.config))
 conf.close()

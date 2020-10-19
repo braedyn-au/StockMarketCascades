@@ -1,17 +1,17 @@
 import numpy as np 
 
 window = 500
-changePrice = True
+changePrice = False
 nportfs = 501
 minPortfSize = 9
 maxPortfSize = 12
 overlapMin = 7
 overlapMax = 9
 tinit = 992
-simsteps = 1000
+simsteps = 7200
 threshold = 100
-sigmoid = 60
-leak = 0.9
+sigmoid = 80
+leak = 1.05
 stockPool = './fbm/fbm100_2_14_2_5.txt'
 hurstPool = './fbm/fbm100_2_14_2_5_hurstpool.txt'
 _stockPool = np.loadtxt(stockPool)

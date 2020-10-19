@@ -148,16 +148,16 @@ class portfolio:
                 #BUY
                 fcash += -self.orders[i]*stockPool[stock][time]
         
-            # Update portfolio net value
-            fvalue += self.weights[stock]*stockPool[stock][time]
+            # Update portfolio net value -> moved to updateWeightData
+            #fvalue += self.weights[stock]*stockPool[stock][time]
 
             if changePrice and self.orders[i]!=0:
                 hurstChange_random(stock,time,volume=self.orders[i])
 
             i+=1
 
-        fvalue += fcash
-        self.value = np.append(self.value,fvalue)            
+        # fvalue += fcash
+        # self.value = np.append(self.value,fvalue)            
         self.cash = np.append(self.cash, fcash)        
         # renormalize alloc based on new portfolio value
         for stock,weight in self.weights.items():
@@ -197,7 +197,7 @@ class portfolio:
         fvalue += self.cash[-1]
         self.value = np.append(self.value,fvalue) 
         self.valuedata = pd.concat([self.valuedata, pd.DataFrame({'ID':self.portfID, 'time': [time-1], 'value': self.value[-1], 'cash': self.cash[-1]})])
-        # TODO: calculate actual current value
+        #added: calculate actual current value
 
     def reset(self, t = tinit, ptile=70):
         """
@@ -375,7 +375,7 @@ def hurstChange_random(stock, time, volume, proportion = 1000):
         
         h1 = h0+increment
         if h1<0.45:
-            h1=0.2
+            h1=0.45
         elif h1>0.75:
             h1=0.75
         
@@ -404,7 +404,7 @@ def priceChange(time, changePrice=changePrice):
                 #fbmNew = fbm(h1, 2**14,2**14)
                 f = fbm.FBM(n=2**14,hurst=h1,length=2**5, method='daviesharte')
                 fbmNew = f.fbm()
-                fbmNew = abs(fbmNew[:numberNewPrices]+p0)
+                fbmNew = abs(fbmNew[1:numberNewPrices+1]+p0)
                 stockPool[stock][time+1:]=fbmNew
             
 

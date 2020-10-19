@@ -51,7 +51,8 @@ def characterize(stockPool, tmin = 992, tmax = 8192, window=config.window):# sto
     return stockChars
 
 def sigmoid(x, x0, leak = config.leak, k = config.sigmoid):
-    z = np.exp(-k*(x-(x0*leak)))
+    #z = np.exp(-(k/abs(x0))*(x-(x0*leak)))
+    z = np.exp(-(k)*(x-(x0*leak)))
     p = 1/(1+z)
     return p
 
