@@ -126,6 +126,7 @@ def cosineSimP_cash(time, portf1, portf2): #change from .stocks array to the wei
 def findStockCascades(stockTrans, maxSep = 10):
     """
     works on stockTransactions tables
+    legacy
     """
     
     if len(stockTrans) > 0 :
@@ -192,10 +193,5 @@ def weightvarMovie(portf,TstockChars,TstockPool):
         ocashalloc = cashalloc
     print("Done")
     print("mencoder 'mf://*wv_tmp.png' -mf type=png:fps=4 -ovc lavc -lavcopts vcodec=wmv2 -oac copy -o ./weightvar_"+portf.portfID+"_pricechange_thresholding.mpg")
-
-
-
-
-
 
 
