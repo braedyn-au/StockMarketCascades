@@ -22,12 +22,10 @@ def findCascades(TtotalOrders, traderIDs, maxtimeeff = 2, maxSep = 2):
     cascadeTime = {}
     cascadeTf = {}
     while len(TtotalOrders) > 0:
-    #     totalTimeOrders = TtotalOrders[TtotalOrders['time']==t]
-        # seed with first portfolio
         print("OG Orders left: ", len(TtotalOrders))
         seed = (TtotalOrders.iloc[0]['portfolio'])
         t0 = TtotalOrders.iloc[0]['time']
-        seedCascade = findPortfOrderCascades(TtotalOrders, seed, t0, maxSep = maxSep)
+        seedCascade = findPortfOrderCascade(TtotalOrders, seed, t0, maxSep = maxSep)
         cascadeStocks[numCascade] = np.asarray(seedCascade['stock'])
         cascadePortfs[numCascade] = np.asarray(seed)
         cascadeTime[numCascade] = t0
@@ -162,7 +160,7 @@ def findStockOrderCascades(stockOrders, cascades, minSep = 2):
                 i0 = key
                 n += 1
                 
-    
+    #cascades is a dictionary
     return cascades
 
     
@@ -190,9 +188,10 @@ def findPortfOrderCascades(TtotalOrders, portf, t0, maxSep = 1):
         return pd.DataFrame()
 
 
-def cascadeAnalyzer(cascades, stockPool):
+def cascadeAnalyzer(cascades, stockPool, t0 = 993, tf= 1992):
     """
     returns arrays of general cascade sizes (value), nrows, and duration for histogramming
+    CALL FINDCASCADES FIRST FOR CAUSAL CASCADES
     """
     sizes = np.array([])
     nrows = np.array([])
@@ -218,14 +217,15 @@ def cascadeAnalyzer(cascades, stockPool):
             
     return sizes, nrows, duration
 
-def stockOrderCascadeAnalyzer(Ttotalorders, stockPool, minSep = 2):    
+def stockOrderCascadeAnalyzer(Ttotalorders, stockPool, t0, tf, minSep ):    
     """
     analysis for stock order cascades seen in draft 8.#
+    ALL IN ONE
     """
     cascades = {}
     for stock in range(len(stockPool)):
         cascades = findStockOrderCascades(Ttotalorders[Ttotalorders['stock']==stock], cascades = cascades, minSep = minSep)
 
-    sizes, nrows, duration = cascadeAnalyzer(cascades, stockPool)
+    sizes, nrows, duration = cascadeAnalyzer(cascades, stockPool, t0=t0, tf=tf)
 
     return sizes, nrows, duration 
