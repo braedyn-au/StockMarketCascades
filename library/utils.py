@@ -146,6 +146,35 @@ def findStockCascades(stockTrans, maxSep = 10):
     else:
         return []
 
+def findPortfCascades(transactions, minAct = 5):
+    """
+    works on Transactions table
+    """
+    if len(transactions) > 0:
+        ToS = transactions.ToS.unique()
+        tmin = min(transactions.ToS)
+        tmax = max(transactions.ToS)
+        rebalances = np.array([])
+        cascadeSizes = np.array([])
+        keySep = np.array([])
+        for i,t in enumerate(range(tmin,tmax+1)):
+            portfs = np.unique(np.append(transactions[transactions.ToS==t].buyer.unique(),
+                                         transactions[transactions.ToS==t].seller.unique()))
+            rebalance = len(portfs) - 1 # the world account
+            rebalances = np.append(rebalances, rebalance)
+            if rebalance <= minAct and i != 0:
+                keySep = np.append(keySep, int(i))
+
+        i0 = 0
+        for key in keySep:
+            key += 1
+            cascadeSize = np.sum(rebalances[int(i0):int(key)])
+            cascadeSizes = np.append(cascadeSizes,cascadeSize)
+            i0=key
+        return cascadeSizes
+    else:
+        return []
+
 def weightvarMovie(portf,TstockChars,TstockPool):
     """
     aug 21 update to show +/- returns and color code each stock and average over time
@@ -193,7 +222,36 @@ def weightvarMovie(portf,TstockChars,TstockPool):
     print("Done")
     print("mencoder 'mf://*wv_tmp.png' -mf type=png:fps=4 -ovc lavc -lavcopts vcodec=wmv2 -oac copy -o ./weightvar_"+portf.portfID+"_pricechange_thresholding.mpg")
 
+def weightSharpeAvg(portf,TstockChars,TstockPool):
+    """
+    """
+    tmax = portf.valuedata.time.max()+1
+    tmin = portf.valuedata.time.min()
+    stocks = portf.stocks
+                
+    for s in stocks:
+        weight = portf.weightdata
+        alloc = np.asarray(weight[weight.stock==s]['weight'])*TstockPool[s,tmin:tmax]/np.asarray(portf.valuedata['value'])
+        stockchars = TstockChars[TstockChars['stock']==s]
+        var = np.mean(np.asarray(stockchars[stockchars['time']<=tmax]['var']))
+        mean = np.mean(np.asarray(stockchars[stockchars['time']<=tmax]['mean']))
+        std = np.mean(np.asarray(stockchars[stockchars['time']<=tmax]['std']))
+        plt.plot(np.mean(mean/std), np.mean(alloc), 'o',label=s)
 
+    # include cash
+#     cashalloc = portf.valuedata[portf.valuedata.time==t].cash[0]/portf.valuedata[portf.valuedata.time==t].value[0]
+#     cashvar = 0
+
+#     plt.plot(cashvar, ocashalloc, 'o', color='lightgreen')
+#     plt.plot(cashvar, cashalloc, 'o', color='green', label='Cash')
+
+    plt.grid(True)
+#     plt.xlim(right=maxvar, left=0)
+#     plt.ylim(top=maxalloc,bottom=0)
+    plt.xlabel("Stock Mean Return/Std")
+    plt.ylabel("Weight Allocation")
+    plt.legend()
+    plt.title("Portf ID: " + str(portf.portfID) +" | Average")
 
 
 
