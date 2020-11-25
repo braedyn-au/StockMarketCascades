@@ -126,6 +126,7 @@ def cosineSimP_cash(time, portf1, portf2): #change from .stocks array to the wei
 def findStockCascades(stockTrans, maxSep = 10):
     """
     works on stockTransactions tables
+    legacy
     """
     
     if len(stockTrans) > 0 :
@@ -245,6 +246,7 @@ def weightSharpeAvg(portf,TstockChars,TstockPool):
 #     plt.plot(cashvar, ocashalloc, 'o', color='lightgreen')
 #     plt.plot(cashvar, cashalloc, 'o', color='green', label='Cash')
 
+<<<<<<< HEAD
     plt.grid(True)
 #     plt.xlim(right=maxvar, left=0)
 #     plt.ylim(top=maxalloc,bottom=0)
@@ -257,3 +259,5 @@ def weightSharpeAvg(portf,TstockChars,TstockPool):
 
 
 
+=======
+>>>>>>> b2177739a28264c95d33094b85e7f510c153c16f
