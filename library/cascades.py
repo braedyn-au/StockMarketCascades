@@ -188,7 +188,7 @@ def findPortfOrderCascades(TtotalOrders, portf, t0, maxSep = 1):
         return pd.DataFrame()
 
 
-def cascadeAnalyzer(cascades, stockPool, t0 = 993, tf= 1992):
+def cascadeAnalyzer(cascades, stockPool, t0, tf):
     """
     returns arrays of general cascade sizes (value), nrows, and duration for histogramming
     CALL FINDCASCADES FIRST FOR CAUSAL CASCADES
@@ -199,7 +199,7 @@ def cascadeAnalyzer(cascades, stockPool, t0 = 993, tf= 1992):
     numCascade = len(cascades)
     for i in range(numCascade):
         casc = cascades[i]
-        if casc['time'].min() > 993 and casc['time'].max() < 1992:
+        if casc['time'].min() > t0 and casc['time'].max() < tf:
             size = 0
             for row in range(len(casc)):
                 time = int(casc.iloc[row]['time'])
